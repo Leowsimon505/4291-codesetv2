@@ -14,7 +14,7 @@ num_of_elem = elem_size(1);
 
 % Create space for vertical force
 force_Y = zeros(num_of_nodes,1);
-force_Y(9) = -10000;
+force_Y(3) = -52205*9.81;
 
 % Create space for horizontal force
 %force_X = zeros(num_of_nodes,1);
