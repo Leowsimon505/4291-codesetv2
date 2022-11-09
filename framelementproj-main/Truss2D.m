@@ -1,8 +1,16 @@
 nodes = load('node.txt');
 elems = load('element.txt');
-%  Split the elements recursively
-[nodes,elems] = elementsplit(nodes,elems,5);
 
+%  Split the elements recursively
+[nodes,elems] = elementsplit(nodes,elems,2);
+
+dimensions = load('dimensions.txt');
+dimensions_size = size(dimensions,1);
+
+%max stress for each set of dimensions
+max_stress_array = zeros(1,dimensions_size);
+
+for k = 1:dimensions_size
 %  Determine the number of nodes
 node_size = size(nodes);
 num_of_nodes = node_size(1);
@@ -14,6 +22,10 @@ K = zeros(3*num_of_nodes, 3*num_of_nodes);
 elem_size = size(elems);
 num_of_elem = elem_size(1);
 
+%input dimensions b & h
+b = dimensions(k,1); % element breadth
+h = dimensions(k,2); % element height
+
 %Assembly
 for j = 1:num_of_elem
     
@@ -21,27 +33,25 @@ for j = 1:num_of_elem
     node_1 = elems(j,1);
     node_2 = elems(j,2);
 
-    %   Obtain element type
-    elem_type = elems(j,3);
 
     %transformation
-    p = 0;
+    theta = 0;
     if (nodes(node_2,1) - nodes(node_1,1)< 0)
-        p = p+pi;
+        theta = theta+pi;
     end
-    p = p+ atan((nodes(node_2,2) - nodes(node_1,2))/ (nodes(node_2,1) - nodes(node_1,1)));
+    theta = theta+ atan((nodes(node_2,2) - nodes(node_1,2))/ (nodes(node_2,1) - nodes(node_1,1)));
     A2 = zeros(6,6);
     %p = angle from x axis
-    A2([1,2],[1,2]) = Transformation2D( p,0 );
+    A2([1,2],[1,2]) = Transform2D( theta,0 );
     A2(3,3) = 1;
-    A2([4,5],[4,5]) = Transformation2D( p,0 );
+    A2([4,5],[4,5]) = Transform2D( theta,0 );
     A2(6,6) = 1;
     
     %	Flocal = A2Inv * K * A2 * ulocal
-    K_bar = Sub_bar_stiffness(nodes(node_1,:), nodes(node_2,:), elem_type);
+    K_bar = Sub_bar_stiffness(nodes(node_1,:), nodes(node_2,:), b, h);
     K_bar_global = A2 * Input_1D_k(K_bar) * A2';
     
-    K_beam = Sub_beam_stiffness(nodes(node_1,:), nodes(node_2,:), elem_type);
+    K_beam = Sub_beam_stiffness(nodes(node_1,:), nodes(node_2,:), b, h);
     K_beam_global = A2 * Input_1D_k_beam(K_beam) * A2';
     K_elem_global = K_bar_global + K_beam_global;
    
@@ -62,9 +72,9 @@ for j = 1:num_of_elem
 end
 
 % Load force and moment 
-F = Input_2D_Force(nodes,elems);
+F = Input_2D_Force(nodes,elems, b, h);
 
-%  Apply disp boundary condition
+%  Apply boundary condition
 disp_data = load('boundary condition.txt');
 disp_nodes = disp_data(:,1);
 disp_dof = disp_data(:,2);
@@ -82,26 +92,22 @@ for j = 1:num_of_disp
     end   
     F(global_dof) = disp_values(j);
     K(global_dof,:) = zeros(1,3*num_of_nodes);
-    K(global_dof,global_dof) = 1   ; 
+    K(global_dof,global_dof) = 1; 
 end
 
 %  Solve for the displacements
 u = K\F;
-
-%input deformation scale and material properties
-deformation_scale = 100;
+%input material properties
 elem_stress = zeros(num_of_elem,1);
 
-hold on
 for i = 1:num_of_elem
     %determine which nodes for each element
     node_1 = elems(i,1);
     node_2 = elems(i,2);
 
     %extract material properties
-    elem_type = elems(i,3);
-    E = get_material_prop('E', elem_type);
-    h = get_material_prop('h', elem_type);
+    E = get_material_prop('E');
+    h = h;
 
     %extracting undeformed node coordinates
     X1 = nodes(node_1, 1);
@@ -114,15 +120,7 @@ for i = 1:num_of_elem
     r_elem = atan2((Y2-Y1) , (X2-X1));
     %calculating undeformed tangent of element
     t_elem = (Y2-Y1) / (X2-X1);
-
-    %plot undeformed
-    switch elem_type
-        case 1
-            plot([X1 X2], [Y1 Y2], 'Color', '#333333');
-        case 2
-            plot([X1 X2], [Y1 Y2], 'Color', '#C07300');
-    end
-
+    
     %extracting nodal displacements X, Y, rotation
     D1 = u(3*node_1-2 : 3*node_1);
     D2 = u(3*node_2-2 : 3*node_2);
@@ -143,22 +141,10 @@ for i = 1:num_of_elem
     elem_axial_stress = E * abs(L_deformed - L_undeformed)/L_undeformed;
     elem_stress(i) = (elem_axial_stress + elem_bending_stress);
 
-    %multiply displacement by a scaling factor for better visualisation
-    D1 = D1 * deformation_scale;
-    D2 = D2 * deformation_scale;
-
-    %calculating node coordinates and tangent after scaled deformations
-    X1 = X1 + D1(1);
-    Y1 = Y1 + D1(2);
-    X2 = X2 + D2(1);
-    Y2 = Y2 + D2(2);
-    t1 = tan(r_elem + D1(3));
-    t2 = tan(r_elem + D2(3));
-
-    %cplot deformed results
-    ferguson_plot(X1, Y1, t1, X2, Y2, t2);
 end
-hold off
 
-elem_stress;
-max(elem_stress)
+%add max element stress for each dimension into max stress array
+max_stress_array(k) = max(elem_stress);
+end
+
+max_stress_array
