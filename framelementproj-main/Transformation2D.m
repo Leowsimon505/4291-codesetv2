@@ -1,9 +1,9 @@
-function A = Transformation2D( p,dir )
+function A = Transform2D(theta,dir)
 %Global to Local, dir = 1
-if (dir ==1 )
-    A = [cos(p), sin(p); -sin(p) , cos(p)];
+if (dir == 1)
+    A = [cos(theta), sin(theta); -sin(theta) , cos(theta)];
  %Local to Global, dir = 0
 elseif (dir == 0)
-    A = [cos(p), -sin(p); sin(p) , cos(p)];
+    A = [cos(theta), -sin(theta); sin(theta) , cos(theta)];
    
 end
