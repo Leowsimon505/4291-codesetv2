@@ -1,4 +1,4 @@
-function KGlobal = Input_1D_k_beam(k )
+function KGlobal = Input_1D_k_beam(k)
 Ktemp = zeros(6,6);
 Ktemp(2,2) = k(1,1);
 Ktemp(2,3) = k(1,2);
