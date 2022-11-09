@@ -1,4 +1,4 @@
-function Ke = Sub_bar_stiffness(node_1_coord, node_2_coord, elem_type)
+function Ke = Sub_bar_stiffness(node_1_coord, node_2_coord, b, h)
 %   Returns a 2 by 2 element stiffness matrix
 %   Inputs: global x-coordinates of node 1 and node 2
 %   Requires Gauss quadrature data
@@ -13,8 +13,8 @@ function Ke = Sub_bar_stiffness(node_1_coord, node_2_coord, elem_type)
   L = ((node_2_coord(1)-node_1_coord(1))^2 + (node_2_coord(2)-node_1_coord(2))^2)^0.5;
 
   % Obtain E & A of element
-  E = get_material_prop('E', elem_type);
-  A = get_material_prop('b', elem_type) * get_material_prop('h', elem_type);
+  E = get_material_prop('E');
+  A = b * h;
 
   % For Gauss quadrature sum
   sum = 0;
